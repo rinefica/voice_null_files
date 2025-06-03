@@ -1,0 +1,6 @@
+env: "local"
+storage_path: "postgres://postgres:postgres@postgres:5432/postgres?sslmode=disable"
+secret: "somesecretjwt"
+server:
+  port: 8000
+  timeout: 1h
