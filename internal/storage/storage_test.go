@@ -2,13 +2,14 @@ package storage
 
 import (
 	"context"
+	"log"
+	"os"
+	"testing"
+
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rinefica/voice_null_files/internal/lib/sl"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"log"
-	"os"
-	"testing"
 )
 
 var testDbInstance *pgxpool.Pool
@@ -63,6 +64,28 @@ func TestAddFile(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Equal(t, "filename", file.Filename)
+}
+
+func TestSaveInfoData(t *testing.T) {
+	secret := "secret"
+	ds := Storage{
+		sl.SetupLogger(""),
+		testDbInstance,
+	}
+
+	userID := doAuth(t, secret, ds)
+	data := "password"
+	infoType := "txt"
+	additional := "txt"
+	uuid := "uuid"
+
+	err := ds.SaveInfoData(context.Background(), data, infoType, additional, uuid, userID)
+	assert.NoError(t, err)
+
+	infoData, err := ds.InfoData(context.Background(), uuid, userID)
+
+	assert.NoError(t, err)
+	assert.Equal(t, data, infoData.Data)
 }
 
 func TestAllFiles(t *testing.T) {

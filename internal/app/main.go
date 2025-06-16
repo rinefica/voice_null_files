@@ -1,11 +1,11 @@
 package app
 
 import (
-	"github.com/rinefica/voice_null_files/internal/app/http"
-	"github.com/rinefica/voice_null_files/internal/storage"
-
 	"log/slog"
 	"time"
+
+	"github.com/rinefica/voice_null_files/internal/app/http"
+	"github.com/rinefica/voice_null_files/internal/storage"
 )
 
 type App struct {
@@ -18,6 +18,7 @@ func NewApp(
 	storagePath string,
 	tokenTTL time.Duration,
 	secret string,
+	key string,
 ) *App {
 
 	strg, err := storage.NewStorage(log, storagePath)
@@ -25,7 +26,7 @@ func NewApp(
 		panic(err)
 	}
 
-	newApp := http.NewApp(log, grpcPort, strg, tokenTTL, secret)
+	newApp := http.NewApp(log, grpcPort, strg, tokenTTL, secret, []byte(key))
 	return &App{
 		Server: *newApp,
 	}

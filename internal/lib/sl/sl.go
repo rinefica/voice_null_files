@@ -17,6 +17,7 @@ func Err(err error) slog.Attr {
 	}
 }
 
+// SetupLogger конфигурация и запуск логгера.
 func SetupLogger(env string) *slog.Logger {
 	var log *slog.Logger
 	switch env {

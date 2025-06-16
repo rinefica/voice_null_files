@@ -2,18 +2,21 @@ package http
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
+	"log/slog"
+	"net/http"
+	"time"
+
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/rinefica/voice_null_files/internal/services/auth"
+	"github.com/rinefica/voice_null_files/internal/services/crypto"
 	"github.com/rinefica/voice_null_files/internal/services/files"
 	"github.com/rinefica/voice_null_files/internal/services/info_data"
 	"github.com/rinefica/voice_null_files/internal/services/user_data"
 	"github.com/rinefica/voice_null_files/internal/storage"
-	"log/slog"
-	"net/http"
-	"time"
 )
 
 type App struct {
@@ -29,17 +32,30 @@ func NewApp(
 	storage *storage.Storage,
 	tokenTTL time.Duration,
 	secret string,
+	key []byte,
 ) *App {
 
 	router := gin.Default()
 	authService := auth.New(log, storage, storage, tokenTTL, secret)
 	fileService := files.NewFileService(log, storage, storage)
-	infoService := info_data.NewInfoDataService(log, storage, storage)
+	cryptoService := crypto.NewCryptoService(log, key)
+	infoService := info_data.NewInfoDataService(log, storage, storage, cryptoService)
 	userService := user_data.NewUserDataServiceImpl(log, storage)
 	setupRouter(log, router, authService, fileService, infoService, userService, secret)
+
+	cert, err := tls.LoadX509KeyPair("keys/server.crt", "keys/server.key")
+	if err != nil {
+		panic(err)
+	}
+	config := &tls.Config{
+		InsecureSkipVerify: true,
+		Certificates:       []tls.Certificate{cert},
+	}
+
 	srv := &http.Server{
-		Addr:    fmt.Sprintf(":%d", port),
-		Handler: router.Handler(),
+		Addr:      fmt.Sprintf(":%d", port),
+		Handler:   router.Handler(),
+		TLSConfig: config,
 	}
 
 	return &App{
@@ -50,8 +66,15 @@ func NewApp(
 	}
 }
 
-func (a *App) MustRun() {
+/*func (a *App) MustRun() {
 	if err := a.server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		panic(err)
+	}
+}*/
+
+func (a *App) MustRun() {
+
+	if err := a.server.ListenAndServeTLS("keys/server.crt", "keys/server.key"); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		panic(err)
 	}
 }
@@ -59,7 +82,6 @@ func (a *App) MustRun() {
 func (a *App) Stop() {
 	const tag = "httpApp.stop"
 	log := a.log.With("tag", tag)
-	log.Info("stopping grpc server")
 
 	a.storage.Close()
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -78,22 +100,30 @@ func setupRouter(
 	userService user_data.UserDataService,
 	secret string) {
 
-	// Route for generating tokens
+	// Авторизация в системе.
 	router.POST("/login", authService.Login)
-	// Route for generating tokens
+	// Регистрация в системе.
 	router.POST("/register", authService.Register)
 
-	// Middleware to check JWT on every request
+	// Проверка jwt-токена для всех последующих запросов.
 	router.Use(authMiddleware(log, secret))
+
+	// Получение ранее загруженного этим пользователем файла по uuid.
 	router.GET("/api/file/:uuid", fileService.File)
+	// Загрузка пользователем файла в систему.
 	router.POST("/api/file/", fileService.SaveFile)
 
+	// Получение текстовых данных пользователя по uuid.
 	router.GET("/api/info_data/:uuid", infoService.InfoData)
+	// Добавление текстовых данных в систему.
 	router.POST("/api/info_data/", infoService.SaveInfoData)
 
+	// Получение всех загруженных пользователем данных.
 	router.GET("/api/info_data/all", userService.UserData)
 }
 
+// authMiddleware добавляет проверку на наличие jwt токена в запросе,
+// для внутренних дальнейших обработок добавляет данные пользователя к контексту запроса.
 func authMiddleware(log *slog.Logger, secret string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		tokenString := c.GetHeader("Authorization")

@@ -3,16 +3,18 @@ package files
 import (
 	"context"
 	"fmt"
-	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
-	"github.com/rinefica/voice_null_files/internal/storage"
 	"log/slog"
 	"net/http"
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
+	"github.com/rinefica/voice_null_files/internal/storage"
 )
 
+// FileService сервис для сохранения и получения файлов с сервера
 type FileService interface {
 	SaveFile(c *gin.Context)
 	File(c *gin.Context)
@@ -32,6 +34,8 @@ func NewFileService(log *slog.Logger, saver storage.FileSaver, fileProvider stor
 	}
 }
 
+// File метод для получения ранее загруженного файла на сервер,
+// использует uuid файла для поиска и user_id для проверки доступности пользователю.
 func (s *FileServiceImpl) File(c *gin.Context) {
 	tag := "File"
 	log := s.log.With("tag", tag)
@@ -56,6 +60,8 @@ func (s *FileServiceImpl) File(c *gin.Context) {
 	c.FileAttachment(path, file.Filename)
 }
 
+// SaveFile сохраняет файл на сервер, генерирует uuid и сохраняет с этим именем,
+// также сохраняет в БД принадлежность файла пользователю по user_id.
 func (s *FileServiceImpl) SaveFile(c *gin.Context) {
 	tag := "SaveFile"
 	log := s.log.With("tag", tag)
@@ -104,5 +110,5 @@ func (s *FileServiceImpl) SaveFile(c *gin.Context) {
 	}
 	log.Info("success save file to db")
 
-	c.JSON(http.StatusOK, fmt.Sprintf("'%s' uploaded!", f.Filename))
+	c.JSON(http.StatusOK, fmt.Sprintf("'%s' uploaded! uuid %s", f.Filename, filename))
 }

@@ -2,15 +2,18 @@ package info_data
 
 import (
 	"context"
-	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
-	"github.com/rinefica/voice_null_files/internal/domain/model"
-	"github.com/rinefica/voice_null_files/internal/storage"
 	"log/slog"
 	"net/http"
 	"time"
+
+	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
+	"github.com/rinefica/voice_null_files/internal/domain/model"
+	"github.com/rinefica/voice_null_files/internal/services/crypto"
+	"github.com/rinefica/voice_null_files/internal/storage"
 )
 
+// InfoDataService сервис для сохранения текстовой информации.
 type InfoDataService interface {
 	SaveInfoData(c *gin.Context)
 	InfoData(c *gin.Context)
@@ -20,16 +23,19 @@ type InfoDataServiceImpl struct {
 	log      *slog.Logger
 	saver    storage.InfoDataSaver
 	provider storage.InfoData
+	crypto   crypto.CryptoService
 }
 
-func NewInfoDataService(log *slog.Logger, saver storage.InfoDataSaver, provider storage.InfoData) InfoDataService {
+func NewInfoDataService(log *slog.Logger, saver storage.InfoDataSaver, provider storage.InfoData, crypto crypto.CryptoService) InfoDataService {
 	return &InfoDataServiceImpl{
 		log:      log,
 		saver:    saver,
 		provider: provider,
+		crypto:   crypto,
 	}
 }
 
+// SaveInfoData сохраняет данные зарегистрированного пользователя.
 func (s *InfoDataServiceImpl) SaveInfoData(c *gin.Context) {
 	tag := "SaveInfoData"
 	log := s.log.With("tag", tag)
@@ -53,9 +59,13 @@ func (s *InfoDataServiceImpl) SaveInfoData(c *gin.Context) {
 	uuid := uuid.New().String()
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
+	cryptoData, err := s.crypto.Encrypt([]byte(requestBody.Data))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "can't save data"})
+	}
 	if err := s.saver.SaveInfoData(
 		ctx,
-		requestBody.Data,
+		cryptoData,
 		requestBody.Type,
 		requestBody.AdditionalData,
 		uuid,
@@ -70,6 +80,7 @@ func (s *InfoDataServiceImpl) SaveInfoData(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"info": uuid})
 }
 
+// InfoData получает данные по ключу с проверкой принадлежности пользователю.
 func (s *InfoDataServiceImpl) InfoData(c *gin.Context) {
 	tag := "InfoData"
 	log := s.log.With("tag", tag)
@@ -89,8 +100,10 @@ func (s *InfoDataServiceImpl) InfoData(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, err.Error())
 		return
 	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"data": infoDataModel,
-	})
+	decryptData, err := s.crypto.Decrypt(infoDataModel.Data)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+	}
+	infoDataModel.Data = string(decryptData)
+	c.JSON(http.StatusOK, infoDataModel)
 }

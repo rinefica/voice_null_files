@@ -2,17 +2,19 @@ package auth
 
 import (
 	"errors"
+	"log/slog"
+	"net/http"
+	"time"
+
 	"github.com/gin-gonic/gin"
 	"github.com/rinefica/voice_null_files/internal/domain/model"
 	"github.com/rinefica/voice_null_files/internal/lib/jwt"
 	"github.com/rinefica/voice_null_files/internal/lib/sl"
 	"github.com/rinefica/voice_null_files/internal/storage"
 	"golang.org/x/crypto/bcrypt"
-	"log/slog"
-	"net/http"
-	"time"
 )
 
+// AuthService - сервис для авторизации.
 type AuthService interface {
 	Login(c *gin.Context)
 	Register(c *gin.Context)
@@ -41,6 +43,16 @@ func New(
 	}
 }
 
+// Login метод для авторизации в системе, обновления токена.
+//
+//	curl --location 'http://localhost:8000/login' \
+//
+// --header 'Content-Type: application/json' \
+//
+//	--data '{
+//	   "email": "ololo",
+//	   "password": "12345"
+//	}' возвращает токен, который в дальнейшем добавляется в headers
 func (a *AuthServiceImpl) Login(
 	c *gin.Context,
 ) {
@@ -91,6 +103,16 @@ func (a *AuthServiceImpl) Login(
 	c.JSON(http.StatusOK, gin.H{"token": token})
 }
 
+// Register метод для создания новой пользовательской записи в системе.
+//
+//	curl --location 'http://localhost:8000/register' \
+//
+// --header 'Content-Type: application/json' \
+//
+//	--data '{
+//	   "email": "ololo",
+//	   "password": "12345"
+//	}' возвращает id созданного пользователя
 func (a *AuthServiceImpl) Register(
 	c *gin.Context,
 ) {

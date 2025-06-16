@@ -4,13 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
+	"strconv"
+
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rinefica/voice_null_files/internal/domain/model"
 	"github.com/rinefica/voice_null_files/internal/lib/sl"
 	"github.com/rinefica/voice_null_files/internal/storage/mapper"
-	"log/slog"
-	"strconv"
 )
 
 var (
@@ -20,6 +21,7 @@ var (
 	ErrFileNotFound      = errors.New("file not found")
 )
 
+// InfoDataSaver сохраняет текстовую информацию в БД.
 type InfoDataSaver interface {
 	SaveInfoData(
 		ctx context.Context,
@@ -31,38 +33,45 @@ type InfoDataSaver interface {
 	) (err error)
 }
 
+// InfoData получает нужную запись от пользователя по uuid.
 type InfoData interface {
 	InfoData(ctx context.Context, uuid string, userID int64) (dataModel *model.InfoDataModel, err error)
 }
 
+// FileSaver сохраняет файл на сервер, файл будет переименован как uuid.
 type FileSaver interface {
 	SaveFile(
 		ctx context.Context, filename string, uuid string, userID int64) (err error)
 }
 
+// File получает файл по uuid, принадлежащий пользователю с userID.
 type File interface {
 	File(ctx context.Context, uuid string, userID int64) (file *model.FileModel, err error)
 }
 
+// UserSaver сохраняет регистрационные данные пользователя.
 type UserSaver interface {
 	SaveUser(
 		ctx context.Context, email string, passHash []byte) (uid int64, err error)
 }
 
+// UserProvider находит пользователя по почте.
 type UserProvider interface {
 	User(ctx context.Context, email string) (user *model.User, err error)
 }
 
+// UserData получает все сохраненные данные пользователя - и текстовые из БД, и сохраненные файлы.
 type UserData interface {
 	AllData(ctx context.Context, userID int64) (commonData []*model.CommonData, err error)
 }
 
+// Storage хранилище для доступа к БД.
 type Storage struct {
 	log  *slog.Logger
 	pool *pgxpool.Pool
 }
 
-// Инициализация хранилища.
+// NewStorage инициализирует хранилище по указанному пути.
 func NewStorage(
 	log *slog.Logger,
 	storagePath string,
@@ -88,7 +97,7 @@ func NewStorage(
 	}, nil
 }
 
-// Закрытие хранилища.
+// Close закрытие хранилища.
 func (s *Storage) Close() {
 	s.pool.Close()
 }
@@ -266,10 +275,10 @@ func (s *Storage) AllFile(ctx context.Context, userID int64) (commonData []*mode
 	log.Info("get AllFile")
 
 	rows, err := s.pool.Query(ctx, getFileByUserQuery, userID)
-	defer rows.Close()
 	if err != nil {
 		return nil, fmt.Errorf("unable to get files: %w", err)
 	}
+	defer rows.Close()
 
 	files := []model.FileModel{}
 	for rows.Next() {
@@ -279,6 +288,9 @@ func (s *Storage) AllFile(ctx context.Context, userID int64) (commonData []*mode
 			return nil, fmt.Errorf("unable to scan row: %w", err)
 		}
 		files = append(files, f)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 
 	return mapper.MapFileToCommon(files), nil
@@ -290,10 +302,10 @@ func (s *Storage) AllInfoData(ctx context.Context, userID int64) (commonData []*
 	log.Info("get AllInfoData")
 
 	rows, err := s.pool.Query(ctx, getInfoDataByUserQuery, userID)
-	defer rows.Close()
 	if err != nil {
 		return nil, fmt.Errorf("unable to get info data: %w", err)
 	}
+	defer rows.Close()
 	infoData := []model.InfoDataModel{}
 	for rows.Next() {
 		info := model.InfoDataModel{}
@@ -302,6 +314,9 @@ func (s *Storage) AllInfoData(ctx context.Context, userID int64) (commonData []*
 			return nil, fmt.Errorf("unable to scan row: %w", err)
 		}
 		infoData = append(infoData, info)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 
 	return mapper.MapInfoDataToCommon(infoData), nil

@@ -4,16 +4,17 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
+	"path/filepath"
+	"runtime"
+	"time"
+
 	"github.com/golang-migrate/migrate"
 	_ "github.com/golang-migrate/migrate/database/postgres" // used by migrator
 	_ "github.com/golang-migrate/migrate/source/file"       // used by migrator
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
-	"log"
-	"path/filepath"
-	"runtime"
-	"time"
 )
 
 const (

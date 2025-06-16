@@ -2,13 +2,15 @@ package user_data
 
 import (
 	"context"
-	"github.com/gin-gonic/gin"
-	"github.com/rinefica/voice_null_files/internal/storage"
 	"log/slog"
 	"net/http"
 	"time"
+
+	"github.com/gin-gonic/gin"
+	"github.com/rinefica/voice_null_files/internal/storage"
 )
 
+// UserDataService предоставляет общий интерфейс для всех типов данных, сохраненных пользователем.
 type UserDataService interface {
 	UserData(c *gin.Context)
 }
@@ -25,6 +27,7 @@ func NewUserDataServiceImpl(log *slog.Logger, provider storage.UserData) *UserDa
 	}
 }
 
+// UserData предоставляет как текстовые, так и файловые данные, сохраненные пользователем, в виде единого списка.
 func (s *UserDataServiceImpl) UserData(c *gin.Context) {
 	tag := "AllUserData"
 	log := s.log.With("tag", tag)

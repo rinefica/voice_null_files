@@ -1,4 +1,4 @@
-FROM golang:1.24.0
+FROM golang:1.24.0 AS builder
 WORKDIR /app
 ENV CONFIG_PATH=./config/config_container.yaml
 COPY . .

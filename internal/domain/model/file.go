@@ -1,7 +1,11 @@
 package model
 
+// FileModel данные загруженного файла.
 type FileModel struct {
-	UUID     string
+	// UUID уникальный идентификатор для файла, сохранен под этим именем в файловой системе.
+	UUID string
+	// Filename имя файла, заданное пользователем.
 	Filename string
-	UserID   int64
+	// UserID идентификатор пользователя, которому принадлежит файл.
+	UserID int64
 }
