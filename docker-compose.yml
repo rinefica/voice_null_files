@@ -26,3 +26,5 @@ services:
     volumes:
       - ./migrations:/migrations
     working_dir: /migrations
+    depends_on:
+      - postgres

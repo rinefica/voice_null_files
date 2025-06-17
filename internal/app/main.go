@@ -19,6 +19,7 @@ func NewApp(
 	tokenTTL time.Duration,
 	secret string,
 	key string,
+	useSSL bool,
 ) *App {
 
 	strg, err := storage.NewStorage(log, storagePath)
@@ -26,7 +27,7 @@ func NewApp(
 		panic(err)
 	}
 
-	newApp := http.NewApp(log, grpcPort, strg, tokenTTL, secret, []byte(key))
+	newApp := http.NewApp(log, grpcPort, strg, tokenTTL, secret, []byte(key), useSSL)
 	return &App{
 		Server: *newApp,
 	}

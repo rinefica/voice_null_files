@@ -33,6 +33,7 @@ func NewApp(
 	tokenTTL time.Duration,
 	secret string,
 	key []byte,
+	useSSL bool,
 ) *App {
 
 	router := gin.Default()
@@ -43,13 +44,16 @@ func NewApp(
 	userService := user_data.NewUserDataServiceImpl(log, storage)
 	setupRouter(log, router, authService, fileService, infoService, userService, secret)
 
-	cert, err := tls.LoadX509KeyPair("keys/server.crt", "keys/server.key")
-	if err != nil {
-		panic(err)
-	}
-	config := &tls.Config{
-		InsecureSkipVerify: true,
-		Certificates:       []tls.Certificate{cert},
+	config := &tls.Config{}
+	if useSSL {
+		cert, err := tls.LoadX509KeyPair("keys/server.crt", "keys/server.key")
+		if err != nil {
+			panic(err)
+		}
+		config = &tls.Config{
+			InsecureSkipVerify: true,
+			Certificates:       []tls.Certificate{cert},
+		}
 	}
 
 	srv := &http.Server{
@@ -66,16 +70,15 @@ func NewApp(
 	}
 }
 
-/*func (a *App) MustRun() {
-	if err := a.server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-		panic(err)
-	}
-}*/
-
-func (a *App) MustRun() {
-
-	if err := a.server.ListenAndServeTLS("keys/server.crt", "keys/server.key"); err != nil && !errors.Is(err, http.ErrServerClosed) {
-		panic(err)
+func (a *App) MustRun(useSSL bool) {
+	if useSSL {
+		if err := a.server.ListenAndServeTLS("keys/server.crt", "keys/server.key"); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			panic(err)
+		}
+	} else {
+		if err := a.server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			panic(err)
+		}
 	}
 }
 

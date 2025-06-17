@@ -32,6 +32,7 @@ type ServerConfig struct {
 	Port int `yaml:"port" env-default:"8080"`
 	// Timeout максимальное время ожидания запроса.
 	Timeout time.Duration `yaml:"timeout"`
+	UseSSL  bool          `yaml:"use_ssl" env-default:"false"`
 }
 
 // MustLoad загружает конфиг из yaml-файла с описанием.

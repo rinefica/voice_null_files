@@ -21,9 +21,17 @@ func main() {
 
 	log.Info("version: ", slog.Any("version", cfg.Version))
 
-	applctn := app.NewApp(log, cfg.Server.Port, cfg.StoragePath, cfg.TokenTTL, cfg.Secret, cfg.Key)
+	applctn := app.NewApp(
+		log,
+		cfg.Server.Port,
+		cfg.StoragePath,
+		cfg.TokenTTL,
+		cfg.Secret,
+		cfg.Key,
+		cfg.Server.UseSSL,
+	)
 
-	go applctn.Server.MustRun()
+	go applctn.Server.MustRun(cfg.Server.UseSSL)
 
 	db, err := sql.Open("postgres", cfg.StoragePath)
 	if err != nil {

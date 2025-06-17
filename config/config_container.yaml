@@ -6,3 +6,4 @@ key: "somepasswordkey"
 server:
   port: 8000
   timeout: 1h
+  use_ssl: false
