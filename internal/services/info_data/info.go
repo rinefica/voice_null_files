@@ -1,10 +1,8 @@
 package info_data
 
 import (
-	"context"
 	"log/slog"
 	"net/http"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -57,14 +55,12 @@ func (s *InfoDataServiceImpl) SaveInfoData(c *gin.Context) {
 	}
 
 	uuid := uuid.New().String()
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-	defer cancel()
 	cryptoData, err := s.crypto.Encrypt([]byte(requestBody.Data))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "can't save data"})
 	}
 	if err := s.saver.SaveInfoData(
-		ctx,
+		c,
 		cryptoData,
 		requestBody.Type,
 		requestBody.AdditionalData,
@@ -91,10 +87,7 @@ func (s *InfoDataServiceImpl) InfoData(c *gin.Context) {
 	uuid := c.Param("uuid")
 	log.Info("UUID: ", uuid)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-	defer cancel()
-
-	infoDataModel, err := s.provider.InfoData(ctx, uuid, int64(userID))
+	infoDataModel, err := s.provider.InfoData(c, uuid, int64(userID))
 	if err != nil {
 		log.Error("Info data not found" + err.Error())
 		c.JSON(http.StatusBadRequest, err.Error())
