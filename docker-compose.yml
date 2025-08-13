@@ -1,0 +1,30 @@
+services:
+  files:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - CONFIG_PATH=./config/config_container.yaml
+    depends_on:
+      - postgres
+  postgres:
+    image: postgres:16.8
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_USER: postgres
+    healthcheck:
+      test: pg_isready --username "postgres" --dbname "postgres"
+      interval: 1s
+      retries: 3
+      timeout: 5s
+    ports:
+      - "5432:5432"
+  migrations:
+    image: migrate/migrate
+    command: -database postgres://postgres:postgres@postgres:5432/postgres?sslmode=disable -path /migrations up
+    volumes:
+      - ./migrations:/migrations
+    working_dir: /migrations
+    depends_on:
+      - postgres
