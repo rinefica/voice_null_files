@@ -19,6 +19,7 @@ import (
 	"github.com/rinefica/voice_null_files/internal/storage"
 )
 
+// App серверное приложение, использующее http протокол.
 type App struct {
 	log     *slog.Logger
 	router  *gin.Engine
